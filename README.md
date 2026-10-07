@@ -34,6 +34,12 @@ Open [http://localhost:5001](http://localhost:5001). The app serves `static/inde
 
 On macOS, use `python3` instead of `python` if that is the Python 3 command on your system.
 
+## Deploy on Render
+
+The root-level `render.yaml` defines a free Render web service. To deploy, connect this GitHub repository in Render and create a new Blueprint from the repository. Render installs the pinned runtime dependencies from `backend1/requirements-deploy.txt`, starts the Flask app with Gunicorn, and checks `/health`.
+
+The free plan may spin down when idle, and its filesystem is ephemeral; prediction history in `3mk_scans.db` can be lost when the service restarts or redeploys.
+
 ## API
 
 - `GET /health` — service and model status
