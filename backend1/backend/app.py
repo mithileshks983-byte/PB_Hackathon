@@ -242,9 +242,9 @@ def api_scans():
 # ── Entry point ───────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print(f"\n  3MK Phishing Detector")
-    print(f"  ─────────────────────────────────────")
+    print("  -------------------------------------")
     print(f"  Static dir : {STATIC_DIR}")
     print(f"  ML model   : {_model_path}")
     print(f"  History DB : {DB_PATH}")
     print(f"  Running at : http://localhost:5001\n")
-    app.run(debug=True, port=5001, host="0.0.0.0")
+    app.run(debug=False, port=5001, host="127.0.0.1")
