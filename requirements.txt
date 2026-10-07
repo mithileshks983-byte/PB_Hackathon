@@ -3,3 +3,8 @@ uvicorn
 pydantic
 scikit-learn
 joblib
+Flask
+flask-cors
+matplotlib
+pandas
+kagglehub

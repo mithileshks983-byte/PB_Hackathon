@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phishing URL Detector</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#0f172a; color:#e2e8f0;
+         display:flex; justify-content:center; padding:60px 16px; }
+  .card { background:#1e293b; padding:32px; border-radius:12px;
+          width:100%; max-width:560px; }
+  h1 { margin-top:0; }
+  input { width:100%; padding:12px; border-radius:8px; border:1px solid #475569;
+          background:#0f172a; color:#e2e8f0; font-size:16px; box-sizing:border-box; }
+  button { margin-top:12px; padding:12px 24px; border:0; border-radius:8px;
+           background:#3b82f6; color:white; font-size:16px; cursor:pointer; }
+  #result { margin-top:24px; padding:16px; border-radius:8px; display:none;
+            font-size:18px; font-weight:bold; }
+  .safe { background:#14532d; } .phishing { background:#7f1d1d; }
+  .error { background:#78350f; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Phishing URL Detector</h1>
+  <input id="url" placeholder="Paste a URL, e.g. paypal-verify-login.com/secure">
+  <button id="btn">Check URL</button>
+  <div id="result"></div>
+</div>
+<script>
+const input = document.getElementById("url");
+const result = document.getElementById("result");
+
+async function check() {
+  const url = input.value.trim();
+  result.style.display = "block";
+  if (!url) { result.className = "error"; result.textContent = "Please enter a URL."; return; }
+  result.className = ""; result.textContent = "Checking...";
+  try {
+    const res = await fetch("/predict", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (!res.ok) { result.className = "error"; result.textContent = data.error; return; }
+    result.className = data.verdict;
+    result.textContent = (data.verdict === "safe" ? "✅ SAFE" : "⚠️ PHISHING")
+                         + " (" + data.confidence + "% confidence)";
+  } catch (e) {
+    result.className = "error"; result.textContent = "Could not reach the server.";
+  }
+}
+document.getElementById("btn").addEventListener("click", check);
+input.addEventListener("keydown", e => { if (e.key === "Enter") check(); });
+</script>
+</body>
+</html>
