@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linklens: check a link before you click</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#06101d;--panel:rgba(14,28,48,.72);--line:rgba(140,180,230,.18);--text:#e8f0ff;--dim:#8ea3c4;
+--safe:#2de2c0;--warn:#ffb347;--bad:#ff5d73;--accent:#2de2c0;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:400 16px/1.6 'Sora',system-ui,sans-serif;min-height:100vh;overflow-x:hidden}
+#bg{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+main{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:48px 20px 64px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin-bottom:56px}
+.brand i{width:14px;height:14px;border-radius:50%;background:var(--accent);box-shadow:0 0 18px var(--accent);transition:background .6s,box-shadow .6s}
+h1{font-size:clamp(34px,6.4vw,64px);line-height:1.04;font-weight:800;letter-spacing:-.03em;margin:0 0 16px;max-width:14em}
+.sub{color:var(--dim);max-width:34em;margin:0 0 32px}
+.field{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:8px;backdrop-filter:blur(14px);transition:border-color .3s,box-shadow .3s}
+.field:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 18%,transparent)}
+input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--text);font:400 16px 'JetBrains Mono',monospace;padding:12px 14px}
+button{font:600 15px 'Sora',sans-serif;cursor:pointer;border:0;border-radius:12px}
+#go{background:var(--accent);color:#04121a;padding:0 24px;transition:transform .15s,background .6s}
+#go:active{transform:scale(.97)}
+button:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;align-items:center;color:var(--dim);font-size:13px}
+.chip{background:transparent;color:var(--text);border:1px solid var(--line);padding:6px 12px;font:400 12.5px 'JetBrains Mono',monospace;border-radius:99px}
+.chip:hover{border-color:var(--accent)}
+.chip.s::before,.chip.p::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px}
+.chip.s::before{background:var(--safe)}.chip.p::before{background:var(--bad)}
+#out{margin-top:36px;display:none}
+#out.on{display:block}
+.grid{display:grid;grid-template-columns:260px 1fr;gap:20px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px;backdrop-filter:blur(14px)}
+.gauge{text-align:center}
+.ring{position:relative;width:190px;height:190px;margin:0 auto 12px}
+.ring svg{transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:12;stroke-linecap:round}
+.ring .t{stroke:rgba(140,180,230,.12)}
+#arc{stroke:var(--accent);stroke-dasharray:502;stroke-dashoffset:502;transition:stroke-dashoffset 1.3s cubic-bezier(.2,.8,.2,1),stroke .6s}
+.num{position:absolute;inset:0;display:grid;place-content:center;font-size:48px;font-weight:800;letter-spacing:-.04em}
+.num small{display:block;font-size:12px;font-weight:400;color:var(--dim);letter-spacing:0}
+#verdict{font-size:22px;font-weight:800;color:var(--accent);transition:color .6s}
+#advice{color:var(--dim);font-size:14px;margin:6px 0 0}
+.anat{font:400 15px/1.9 'JetBrains Mono',monospace;word-break:break-all;margin:0 0 6px}
+.anat .k{padding:2px 5px;border-radius:6px}
+.k.sch{background:rgba(45,226,192,.14);color:var(--safe)}
+.k.sch.bad{background:rgba(255,93,115,.16);color:var(--bad)}
+.k.sub{background:rgba(255,179,71,.15);color:var(--warn)}
+.k.dom{background:rgba(142,163,196,.18)}
+.k.pth{color:var(--dim)}
+.legend{font-size:12.5px;color:var(--dim);margin:0 0 18px}
+.sig{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);opacity:0;transform:translateY(6px);transition:opacity .4s,transform .4s}
+.sig.in{opacity:1;transform:none}
+.dot{flex:none;width:22px;height:22px;border-radius:50%;display:grid;place-content:center;font-size:12px;font-weight:800;color:#04121a;margin-top:2px}
+.dot.ok{background:var(--safe)}.dot.bad{background:var(--bad)}
+.sig b{display:block;font-size:14.5px}.sig span{font-size:13px;color:var(--dim)}
+.sig em{margin-left:auto;font:600 12px 'JetBrains Mono',monospace;color:var(--bad);font-style:normal;white-space:nowrap}
+.tabs{display:inline-flex;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px;margin-bottom:14px}
+.tabs button{background:none;color:var(--dim);padding:7px 14px;font-size:13px}
+.tabs button[aria-pressed=true]{background:var(--accent);color:#04121a;transition:background .6s}
+pre{margin:0;font:400 12.5px/1.6 'JetBrains Mono',monospace;color:#b9c9e6;white-space:pre-wrap;word-break:break-all}
+.hide{display:none}
+footer{margin-top:44px;color:var(--dim);font-size:13px;max-width:44em}
+.hist{margin-top:28px}
+.hist h2{font-size:18px;margin:0 0 4px}
+.row{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line);font-size:13px}
+.row i{flex:none;width:9px;height:9px;border-radius:50%}
+.row code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 12.5px 'JetBrains Mono',monospace}
+.row span{color:var(--dim);white-space:nowrap}
+.tools{display:flex;gap:8px;margin:8px 0 6px}
+.tools button{background:transparent;border:1px solid var(--line);color:var(--text);padding:6px 12px;font-size:12.5px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+<main>
+  <div class="brand"><i></i>Linklens</div>
+  <h1>Know where a link leads before you click it.</h1>
+  <p class="sub">Paste any web address. Linklens reads its structure, scores the risk, and shows exactly which parts look wrong.</p>
+
+  <div class="field">
+    <input id="u" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Paste a link, e.g. http://paypa1-secure.verify-login.xyz/account" aria-label="Link to check">
+    <button id="go">Check link</button>
+  </div>
+  <div class="chips">Try one:
+    <button class="chip s" data-u="https://www.github.com/anthropics">github.com/anthropics</button>
+    <button class="chip p" data-u="http://secure-paypal.com.account-verify.xyz/signin?id=88213">paypal login lookalike</button>
+    <button class="chip p" data-u="http://192.168.44.12/bank/update-password.php">bank link on an IP address</button>
+  </div>
+
+  <section id="out" aria-live="polite">
+    <div class="tabs" role="group" aria-label="View">
+      <button id="vUser" aria-pressed="true">Everyday user</button>
+      <button id="vSec" aria-pressed="false">Security team</button>
+    </div>
+    <div class="grid">
+      <div class="card gauge">
+        <div class="ring">
+          <svg width="190" height="190" viewBox="0 0 190 190"><circle class="t" cx="95" cy="95" r="80"/><circle id="arc" cx="95" cy="95" r="80"/></svg>
+          <div class="num"><span id="score">0</span><small>risk out of 100</small></div>
+        </div>
+        <div id="verdict">Safe</div>
+        <p id="advice"></p>
+      </div>
+      <div class="card">
+        <p class="anat" id="anat"></p>
+        <p class="legend" id="legend"></p>
+        <div id="userView"><div id="sigs"></div></div>
+        <div id="secView" class="hide"><pre id="vec"></pre></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card hist" id="hist">
+    <h2>Recent checks</h2>
+    <div class="tools"><button id="csv">Download CSV</button><button id="clr">Clear</button></div>
+    <div id="rows"><span style="color:var(--dim);font-size:13px">Links you check are saved here.</span></div>
+  </section>
+
+  <footer>Without a backend, scores come from a rule-based demo engine and history is kept in this browser. With <code>API_URL</code> set, the trained model scores each link and the server stores it in a database.</footer>
+</main>
+
+<script>
+const API_URL = "/api"; // e.g. "/api" -> POST /api/predict {url} returns {score, features}; GET /api/scans lists history
+const $ = s => document.querySelector(s);
+const root = document.documentElement;
+const BRANDS = ["paypal","google","microsoft","apple","amazon","netflix","facebook","instagram","sbi","hdfc","icici","paytm","whatsapp","dropbox"];
+const KEYS = ["login","signin","verify","secure","account","update","confirm","wallet","password","bank","billing","suspend"];
+const BADTLD = ["xyz","top","tk","ml","ga","cf","gq","click","zip","support","work","loan"];
+const SHORT = ["bit.ly","tinyurl.com","t.co","goo.gl","is.gd","cutt.ly","rb.gy"];
+
+function regDomain(host){
+  const p = host.split(".");
+  if(p.length>2 && p[p.length-1].length===2 && /^(co|com|org|gov|ac|net)$/.test(p[p.length-2])) return p.slice(-3).join(".");
+  return p.slice(-2).join(".");
+}
+
+function analyse(raw){
+  let s = raw.trim(); if(!/^[a-z]+:\/\//i.test(s)) s = "http://" + s;
+  let u; try{ u = new URL(s); }catch(e){ return null; }
+  const host = u.hostname.toLowerCase(), reg = regDomain(host);
+  const sub = host.length>reg.length ? host.slice(0,host.length-reg.length-1) : "";
+  const tld = host.split(".").pop(), full = u.href.toLowerCase();
+  const isIP = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+  const keyHits = KEYS.filter(k=>full.includes(k));
+  const brand = BRANDS.find(b => (sub+u.pathname.toLowerCase()).includes(b) && !reg.startsWith(b+"."));
+  const regLabel = reg.split(".")[0];
+  const checks = [
+    ["No HTTPS encryption","The link uses plain http, so data sent to it can be read.", u.protocol!=="https:",15],
+    ["Address is a raw IP number","Real services use names, not numbers like "+host+".", isIP,30],
+    ["Contains an @ symbol","Everything before @ is ignored by the browser. It hides the real destination.", s.includes("@"),20],
+    ["Imitates a known brand",brand?"Mentions \""+brand+"\" but the real domain is "+reg+".":"No brand name is borrowed in the wrong place.", !!brand,25],
+    ["Pressure words in the link",keyHits.length?"Found: "+keyHits.join(", ")+".":"No login or verify wording.", keyHits.length>0,Math.min(24,keyHits.length*8)],
+    ["Risky domain ending","Ending \"."+tld+"\" is common on throwaway sites.", BADTLD.includes(tld),15],
+    ["Too many subdomains","\""+sub+"\" has "+(sub?sub.split(".").length:0)+" layers.", sub.split(".").filter(Boolean).length>2,12],
+    ["Hyphens stacked in the name","Fake domains chain words with hyphens.", (regLabel.match(/-/g)||[]).length>=2 || ((host.match(/-/g)||[]).length>=3),10],
+    ["Disguised characters","Uses punycode (xn--) or digits swapped for letters.", host.includes("xn--")||/[a-z][0-9][a-z]/.test(regLabel),20],
+    ["Very long link","Length "+full.length+" characters. Long links bury the real domain.", full.length>75,10],
+    ["Link shortener hides the target","Shorteners mask where you land.", SHORT.includes(host),12]
+  ].map(([name,detail,bad,w])=>({name,detail,bad,w}));
+  const score = Math.min(100, checks.filter(c=>c.bad).reduce((a,c)=>a+c.w,0));
+  const features = {url_length:full.length,has_https:+(u.protocol==="https:"),has_ip:+isIP,has_at:+s.includes("@"),n_subdomains:sub?sub.split(".").length:0,n_hyphens:(host.match(/-/g)||[]).length,n_digits_host:(host.match(/\d/g)||[]).length,n_keywords:keyHits.length,bad_tld:+BADTLD.includes(tld),brand_mismatch:+!!brand,is_shortener:+SHORT.includes(host)};
+  return {u,sub,reg,checks,score,features,secure:u.protocol==="https:"};
+}
+
+/* verdict + theming */
+function level(sc){return sc<25?["Looks safe","#2de2c0","Nothing suspicious in this link. Still, only enter passwords on sites you opened yourself."]:sc<55?["Suspicious","#ffb347","Be careful. Don't enter a password or card number until you confirm the sender."]:["Likely phishing","#ff5d73","Don't open this link. Report it to your IT team or delete the message."]}
+function theme(col){root.style.setProperty("--accent",col);root.style.setProperty("--bgcol",col);mood=col}
+
+let timer;
+async function run(){
+  const raw = $("#u").value; if(!raw.trim()) return;
+  let r = analyse(raw);
+  if(!r){ $("#u").focus(); return; }
+  if(API_URL){ try{ const j = await (await fetch(API_URL+"/predict",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:raw})})).json(); r.score=j.score; r.features=j.features||r.features; }catch(e){} }
+  $("#out").classList.add("on");
+  const [name,col,adv] = level(r.score);
+  if(!API_URL) saveLocal({url:r.u.href,score:r.score,verdict:name,color:col,at:new Date().toISOString()});
+  renderHistory();
+  theme("#7fb2ff"); scanning=true;
+  $("#verdict").textContent="Scanning…"; $("#advice").textContent=""; $("#score").textContent="0";
+  $("#arc").style.strokeDashoffset=502;
+  $("#anat").innerHTML = `<span class="k sch ${r.secure?"":"bad"}">${r.u.protocol}//</span>${r.sub?`<span class="k sub">${esc(r.sub)}.</span>`:""}<span class="k dom">${esc(r.reg)}</span><span class="k pth">${esc(r.u.pathname+r.u.search)}</span>`;
+  $("#legend").textContent = "Highlighted: connection type, subdomain, the real domain you would land on, and the path.";
+  $("#vec").textContent = JSON.stringify({input:r.u.href,risk_score:r.score,verdict:name,features:r.features},null,2);
+  const box = $("#sigs"); box.innerHTML="";
+  const ordered = [...r.checks.filter(c=>c.bad), ...r.checks.filter(c=>!c.bad)];
+  ordered.forEach(c=>{const d=document.createElement("div");d.className="sig";
+    d.innerHTML=`<div class="dot ${c.bad?"bad":"ok"}">${c.bad?"!":"✓"}</div><div><b>${c.name}</b><span>${esc(c.detail)}</span></div>${c.bad?`<em>+${c.w}</em>`:""}`;box.appendChild(d);});
+  clearInterval(timer); let i=0;
+  timer=setInterval(()=>{const k=box.children[i++]; if(k)k.classList.add("in"); if(i>=ordered.length){clearInterval(timer);}},reduce?0:140);
+  setTimeout(()=>{
+    scanning=false; theme(col);
+    $("#verdict").textContent=name; $("#advice").textContent=adv;
+    $("#arc").style.strokeDashoffset = 502*(1-Math.max(r.score,3)/100);
+    const t0=performance.now(); (function tick(t){const p=Math.min(1,(t-t0)/1300);$("#score").textContent=Math.round(r.score*p);if(p<1)requestAnimationFrame(tick)})(t0);
+  }, reduce?0:Math.min(1400,ordered.length*140));
+  $("#out").scrollIntoView({behavior:reduce?"auto":"smooth",block:"start"});
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+$("#go").onclick=run; $("#u").addEventListener("keydown",e=>{if(e.key==="Enter")run()});
+document.querySelectorAll(".chip").forEach(b=>b.onclick=()=>{$("#u").value=b.dataset.u;run()});
+function view(sec){$("#userView").classList.toggle("hide",sec);$("#secView").classList.toggle("hide",!sec);$("#vUser").setAttribute("aria-pressed",!sec);$("#vSec").setAttribute("aria-pressed",sec)}
+$("#vUser").onclick=()=>view(false); $("#vSec").onclick=()=>view(true);
+
+/* scan history: server DB when API_URL is set, otherwise this browser */
+const KEY="linklens_scans";
+function readLocal(){try{return JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){return[]}}
+function saveLocal(rec){try{const a=readLocal();a.unshift(rec);localStorage.setItem(KEY,JSON.stringify(a.slice(0,100)))}catch(e){}}
+async function getScans(){
+  if(API_URL){try{return await (await fetch(API_URL+"/scans")).json()}catch(e){}}
+  return readLocal();
+}
+async function renderHistory(){
+  const list=await getScans(),box=$("#rows");
+  if(!list.length){box.innerHTML='<span style="color:var(--dim);font-size:13px">Links you check are saved here.</span>';return}
+  box.innerHTML=list.slice(0,8).map(x=>`<div class="row"><i style="background:${x.color||"#8ea3c4"}"></i><code title="${esc(x.url)}">${esc(x.url)}</code><span>${x.score}/100</span><span>${new Date(x.at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span></div>`).join("");
+}
+$("#clr").onclick=()=>{try{localStorage.removeItem(KEY)}catch(e){}renderHistory()};
+$("#csv").onclick=async()=>{const l=await getScans();const c="url,score,verdict,time\n"+l.map(x=>`"${x.url.replace(/"/g,'""')}",${x.score},${x.verdict},${x.at}`).join("\n");const a=document.createElement("a");a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(c);a.download="linklens_scans.csv";a.click()};
+renderHistory();
+
+/* living background: a web of links; risky ones pulse, the web takes on the verdict colour */
+const cv=$("#bg"),cx=cv.getContext("2d");let W,H,nodes=[],mood="#2de2c0",scanning=false,mx=-999,my=-999,sweep=0;
+function size(){W=cv.width=innerWidth*devicePixelRatio;H=cv.height=innerHeight*devicePixelRatio;const n=Math.round(Math.min(90,innerWidth/14));nodes=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.35*devicePixelRatio,vy:(Math.random()-.5)*.35*devicePixelRatio,bad:Math.random()<.14,ph:Math.random()*6.28}))}
+addEventListener("resize",size);addEventListener("pointermove",e=>{mx=e.clientX*devicePixelRatio;my=e.clientY*devicePixelRatio});size();
+function frame(t){
+  cx.clearRect(0,0,W,H);
+  const g=cx.createRadialGradient(W*.8,H*.1,0,W*.8,H*.1,W*.7);g.addColorStop(0,"rgba(40,90,180,.28)");g.addColorStop(1,"rgba(6,16,29,0)");cx.fillStyle=g;cx.fillRect(0,0,W,H);
+  const L=140*devicePixelRatio;sweep=(sweep+(scanning?9:0))%(H+200);
+  for(const a of nodes){
+    if(!reduce){a.x+=a.vx;a.y+=a.vy;if(a.x<0||a.x>W)a.vx*=-1;if(a.y<0||a.y>H)a.vy*=-1;}
+    const dm=Math.hypot(a.x-mx,a.y-my);if(dm<160*devicePixelRatio&&!reduce){a.x+=(a.x-mx)/dm*.8;a.y+=(a.y-my)/dm*.8}
+  }
+  cx.lineWidth=1;
+  for(let i=0;i<nodes.length;i++)for(let j=i+1;j<nodes.length;j++){
+    const a=nodes[i],b=nodes[j],d=Math.hypot(a.x-b.x,a.y-b.y);
+    if(d<L){cx.globalAlpha=(1-d/L)*.35;cx.strokeStyle=(a.bad||b.bad)?"#ff5d73":mood;cx.beginPath();cx.moveTo(a.x,a.y);cx.lineTo(b.x,b.y);cx.stroke()}
+  }
+  for(const a of nodes){
+    const p=a.bad?.5+.5*Math.sin(t/500+a.ph):0,r=(a.bad?3+p*3:2.2)*devicePixelRatio;
+    cx.globalAlpha=a.bad?.55+p*.4:.7;cx.fillStyle=a.bad?"#ff5d73":mood;cx.beginPath();cx.arc(a.x,a.y,r,0,6.28);cx.fill();
+    if(a.bad){cx.globalAlpha=.12*(1-p);cx.beginPath();cx.arc(a.x,a.y,r*4*(.5+p),0,6.28);cx.fill()}
+  }
+  if(scanning){cx.globalAlpha=.5;const s=cx.createLinearGradient(0,sweep-80,0,sweep);s.addColorStop(0,"rgba(127,178,255,0)");s.addColorStop(1,"rgba(127,178,255,.35)");cx.fillStyle=s;cx.fillRect(0,sweep-80,W,80)}
+  cx.globalAlpha=1;requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
